@@ -1278,6 +1278,7 @@ static bool update_kernel_cmdline_params_for_grub(
 
 static bool update_swap_offset(const struct swap_file *swap)
 {
+    FILE *resume_offset_fp;
     bool ret = true;
 
     log_info("Updating swap offset");
@@ -1296,6 +1297,16 @@ static bool update_swap_offset(const struct swap_file *swap)
     }
 
     close(fd);
+
+    log_info("Updating /sys/power/resume_offset");
+    resume_offset_fp = fopen("/sys/power/resume_offset", "we");
+    if (!resume_offset_fp)
+            log_fatal("Could not open %s for writing: %s", "/sys/power/resume_offset", strerror(errno));
+    if (fprintf(resume_offset_fp, "%llu\n", (unsigned long long)swap_area.offset) <= 0)
+            log_fatal("Failed to write /sys/power/resume_offset.");
+    if (fclose(resume_offset_fp) != 0)
+            log_fatal("Failed to close /sys/power/resume_offset.");
+    log_info("Wrote %llu to /sys/power/resume_offset successfully.", (unsigned long long)swap_area.offset);
 
     char *dev_uuid = get_disk_uuid_for_file_path(swap->path);
 
